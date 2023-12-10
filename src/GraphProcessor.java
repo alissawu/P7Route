@@ -122,28 +122,31 @@ public class GraphProcessor {
     }
 
     public List<Point> route(Point start, Point end) throws InvalidAlgorithmParameterException {
-        if (!adjacencyMap.containsKey(start) || !adjacencyMap.containsKey(end) || start.equals(end)) {
-            throw new InvalidAlgorithmParameterException("Invalid start or end point, or points are the same.");
+        if (start.equals(end)) {
+            throw new InvalidAlgorithmParameterException("Start and end points are the same.");
         }
-
+        if (!adjacencyMap.containsKey(start) || !adjacencyMap.containsKey(end)) {
+            throw new InvalidAlgorithmParameterException("Invalid start or end point.");
+        }
+        if (!componentMap.get(start).equals(componentMap.get(end))) {
+            throw new InvalidAlgorithmParameterException("No path exists between the start and end points.");
+        }
+    
         Map<Point, Double> distTo = new HashMap<>();
         Map<Point, Point> pathTo = new HashMap<>();
         PriorityQueue<Point> queue = new PriorityQueue<>(Comparator.comparingDouble(distTo::get));
         Set<Point> visited = new HashSet<>();
-
+    
         for (Point p : adjacencyMap.keySet()) {
             distTo.put(p, Double.MAX_VALUE);
         }
         distTo.put(start, 0.0);
         queue.add(start);
-
+    
         while (!queue.isEmpty()) {
             Point current = queue.poll();
             visited.add(current);
-            if (current.equals(end)) {
-                return buildPath(start, end, pathTo);
-            }
-
+    
             for (Point neighbor : adjacencyMap.get(current)) {
                 if (visited.contains(neighbor)) continue;
                 double newDist = distTo.get(current) + current.distance(neighbor);
@@ -156,9 +159,14 @@ public class GraphProcessor {
                 }
             }
         }
-
-        throw new InvalidAlgorithmParameterException("No path exists between the start and end points.");
+    
+        if (!pathTo.containsKey(end)) {
+            throw new InvalidAlgorithmParameterException("No path exists between the start and end points.");
+        }
+    
+        return buildPath(start, end, pathTo);
     }
+    
 
     private List<Point> buildPath(Point start, Point end, Map<Point, Point> pathTo) {
         LinkedList<Point> path = new LinkedList<>();
