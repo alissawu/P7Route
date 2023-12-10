@@ -1,4 +1,12 @@
-import java.io.*;
+/**
+ * Demonstrates the calculation of shortest paths in the US Highway
+ * network, showing the functionality of GraphProcessor and using
+ * Visualize
+ * @author Owen Astrachan (preliminary)
+ * @author Alissa Wu
+ */
+
+ import java.io.*;
 import java.util.*;
 
 public class GraphDemo {
@@ -23,7 +31,7 @@ public class GraphDemo {
         String start = "Miami FL"; // Default start location
         String end = "Seattle WA"; // Default end location
 
-        // Uncomment below for user interaction via terminal
+        // Uncomment for user interaction from terminal
         /*
         Scanner in = new Scanner(System.in);
         System.out.print("Enter source location: ");
@@ -58,7 +66,7 @@ public class GraphDemo {
         String[] usaData = {"images/usa.png", "data/usa.vis", "data/usa.graph"};
         String[] simpleData = {"images/simple.png", "data/simple.vis", "data/simple.graph"};
 
-        // Modify this line to use different datasets for testing
+        // Modify below to use different datasets 
         String[] useThisData = usaData;
 
         try {

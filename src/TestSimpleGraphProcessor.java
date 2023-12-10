@@ -1,6 +1,4 @@
 import static org.junit.jupiter.api.Assertions.*;
-
-import org.junit.Assert;
 import org.junit.jupiter.api.*;
 
 import java.io.File;
@@ -16,7 +14,9 @@ import java.util.*;
  * 
  * @author Emily Du
  * @author Havish Malladi
+ * @author Owen Astrachan
  */
+
 
 public class TestSimpleGraphProcessor {
 	GraphProcessor simpleDriver = new GraphProcessor();
@@ -63,7 +63,6 @@ public class TestSimpleGraphProcessor {
      * @throws InvalidAlgorithmParameterException
      */
 	@Test public void testRoute() throws InvalidAlgorithmParameterException {
-		// A to F
 		List<Point> resRoute1 = simpleDriver.route(new Point(2, -1), new Point(1, 1));
 		List<Point> trueRoute1 = Arrays.asList(new Point(2, -1), new Point(2, 0), new Point(1, 1));
 		double trueRouteDist1 = 166.93;
