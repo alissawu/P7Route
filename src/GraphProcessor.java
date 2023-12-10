@@ -118,72 +118,68 @@ public class GraphProcessor {
     }
 
     public boolean connected(Point p1, Point p2) {
-        if (componentMap.containsKey(p1) && componentMap.containsKey(p2)){
-            if (componentMap.get(p1) == componentMap.get(p2)){
-                return true;
-            }
-        }
-        return false;
+        return componentMap.getOrDefault(p1, -1).equals(componentMap.getOrDefault(p2, -2));
     }
 
     public List<Point> route(Point start, Point end) throws InvalidAlgorithmParameterException {
-        if (start.equals(end)) {
-            throw new InvalidAlgorithmParameterException("Start and end points are the same.");
-        }
+        List<Point> pathResult = new ArrayList<>();
+    
+        Set<Point> visitedNodes = new HashSet<>();
+        Map<Point, Double> distanceTracker = new HashMap<>();
+        Map<Point, Point> pathMap = new HashMap<>();
+    
+        Comparator<Point> pointComparator = (point1, point2) -> {
+            double distance1 = distanceTracker.getOrDefault(point1, Double.MAX_VALUE);
+            double distance2 = distanceTracker.getOrDefault(point2, Double.MAX_VALUE);
+            return Double.compare(distance1, distance2);
+        };
+    
+        PriorityQueue<Point> pointsToExplore = new PriorityQueue<>(pointComparator);
+    
         if (!adjacencyMap.containsKey(start) || !adjacencyMap.containsKey(end)) {
-            throw new InvalidAlgorithmParameterException("Invalid start or end point.");
-        }
-        if (!connected(start, end)) {
-            throw new InvalidAlgorithmParameterException("No path exists between the start and end points.");
+            throw new InvalidAlgorithmParameterException("No path exists between start and end points.");
         }
     
-        Map<Point, Double> distTo = new HashMap<>();
-        Map<Point, Point> pathTo = new HashMap<>();
-        PriorityQueue<Point> queue = new PriorityQueue<>(Comparator.comparingDouble(distTo::get));
-        Set<Point> visited = new HashSet<>();
+        distanceTracker.put(start, 0.0);
+        pointsToExplore.add(start);
     
-        for (Point p : adjacencyMap.keySet()) {
-            distTo.put(p, Double.MAX_VALUE);
-        }
-        distTo.put(start, 0.0);
-        queue.add(start);
+        while (!pointsToExplore.isEmpty()) {
+            Point currentPoint = pointsToExplore.remove();
     
-        while (!queue.isEmpty()) {
-            Point current = queue.poll();
-            visited.add(current);
+            if (currentPoint.equals(end)) {
+                break;
+            }
     
-            for (Point neighbor : adjacencyMap.get(current)) {
-                if (visited.contains(neighbor)) continue;
-                double newDist = distTo.get(current) + current.distance(neighbor);
-                if (newDist < distTo.get(neighbor)) {
-                    distTo.put(neighbor, newDist);
-                    pathTo.put(neighbor, current);
-                    if (!queue.contains(neighbor)) {
-                        queue.add(neighbor);
-                    }
+            visitedNodes.add(currentPoint);
+            for (Point neighbor : adjacencyMap.get(currentPoint)) {
+                if (visitedNodes.contains(neighbor)) continue;
+    
+                double newDistance = distanceTracker.getOrDefault(currentPoint, Double.MAX_VALUE) + currentPoint.distance(neighbor);
+                if (newDistance < distanceTracker.getOrDefault(neighbor, Double.MAX_VALUE)) {
+                    pathMap.put(neighbor, currentPoint);
+                    distanceTracker.put(neighbor, newDistance);
+                    pointsToExplore.remove(neighbor); // Update priority queue
+                    pointsToExplore.add(neighbor);
                 }
             }
         }
     
-        if (!pathTo.containsKey(end)) {
-            throw new InvalidAlgorithmParameterException("No path exists between the start and end points.");
+        if (!pathMap.containsKey(end)) {
+            throw new InvalidAlgorithmParameterException("No path exists between the specified start and end points.");
         }
     
-        return buildPath(start, end, pathTo);
+        for (Point current = end; current != null; current = pathMap.get(current)) {
+            pathResult.add(current);
+        }
+        Collections.reverse(pathResult);
+    
+        if (pathResult.get(0).equals(start)) {
+            return pathResult;
+        } else {
+            throw new InvalidAlgorithmParameterException("No path exists.");
+        }
     }
     
-
-    private List<Point> buildPath(Point start, Point end, Map<Point, Point> pathTo) {
-        LinkedList<Point> path = new LinkedList<>();
-        Point current = end;
-        while (current != null && !current.equals(start)) {
-            path.addFirst(current);
-            current = pathTo.get(current);
-        }
-
-        path.addFirst(start); // Add start point to the beginning of the path
-        return path;
-    }
     public static void main(String[] args) throws FileNotFoundException, IOException {
         String name = "data/usa.graph";
         GraphProcessor gp = new GraphProcessor();
