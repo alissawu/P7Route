@@ -1,10 +1,12 @@
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.Assert;
 import org.junit.jupiter.api.*;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.security.InvalidAlgorithmParameterException;
 import java.util.*;
 
 
@@ -14,7 +16,6 @@ import java.util.*;
  * 
  * @author Emily Du
  * @author Havish Malladi
- * @author Owen Astrachan
  */
 
 public class TestSimpleGraphProcessor {
@@ -25,31 +26,12 @@ public class TestSimpleGraphProcessor {
 
     // Setup to initialize driver before tests
 	@BeforeEach
-    public void setup() throws Exception {
-		try {
-			simpleDriver.initialize(new FileInputStream(simpleGraphFile));
-			simpleCityLookup = readCities(simpleCities);
-		} catch(FileNotFoundException filenotFound) {
-			assertTrue(false, "File not found; please follow the project description for instructions on either" +
-						"a) changing your settings.json or b) replacing usGraphFile and usCities with their absolute paths!");
-		}
-
+    public void setup() throws FileNotFoundException {
+        simpleDriver.initialize(new FileInputStream(new File(simpleGraphFile)));
+        simpleCityLookup = readCities(simpleCities);
     }
 
 
-	/**
-	 * Test getVertices, NOT USED Fall 2023
-	 */
-	// @Test 
-	public void testGetVertices(){
-		List<Point> list = simpleDriver.getVertices();
-		Collections.sort(list);
-		assertTrue(list.size() == 10,"simple size vertex count wrong");
-		List<Point> local = Arrays.asList(new Point(-1.0,-1.0), new Point(-1,0), new Point(-1,1));
-		for(int k=0; k < local.size(); k++) {
-			assertEquals(list.get(k),local.get(k), "k-th vertex off at "+k);
-		}
-	}
 
     /**
      * Tests that driver returns closest point in graph to a given query point
@@ -59,7 +41,7 @@ public class TestSimpleGraphProcessor {
 		String[] froms = new String[]{"A A", "B B", "H H", "K K", "L L"};
 
 		// includes all possible nearest points within 3% of the closest distance
-        List<Point[]> pLookedUpRanges = new ArrayList<>();
+        List<Point[]> pLookedUpRanges = new ArrayList();
 		pLookedUpRanges.add(new Point[] {new Point(2, -1)});
         pLookedUpRanges.add(new Point[] {new Point(2, 0)});
         pLookedUpRanges.add(new Point[] {new Point(-1, -1)});
@@ -80,7 +62,7 @@ public class TestSimpleGraphProcessor {
      * Accepts alternate paths that are ultimately within 3% of the distance of the true shortest path
      * @throws InvalidAlgorithmParameterException
      */
-	@Test public void testRoute() throws IllegalArgumentException {
+	@Test public void testRoute() throws InvalidAlgorithmParameterException {
 		// A to F
 		List<Point> resRoute1 = simpleDriver.route(new Point(2, -1), new Point(1, 1));
 		List<Point> trueRoute1 = Arrays.asList(new Point(2, -1), new Point(2, 0), new Point(1, 1));
@@ -96,7 +78,7 @@ public class TestSimpleGraphProcessor {
 			resRoute2.get(0).equals(trueRoute2.get(0)) && resRoute2.get(1).equals(trueRoute2.get(1))); // no ambiguity
 
         // D to J (1, -1) to (-1, 1)
-        assertThrows(IllegalArgumentException.class, ()->simpleDriver.route(new Point(1, -1), new Point(-1, 1)));
+        assertThrows(InvalidAlgorithmParameterException.class, ()->simpleDriver.route(new Point(1, -1), new Point(-1, 1)));
 	
 	}
 
@@ -121,15 +103,19 @@ public class TestSimpleGraphProcessor {
 
     /**
      * Tests that driver returns true if two inputs are connected in the graph
+	 * Uses hardcoded nearestPoints, has no dependency on student's nearestPoint() implementaiton
      */
 	@Test
 	public void testConnected() {
 		// A to J
 		assertFalse(simpleDriver.connected(new Point(2, -1), new Point(-1, 1)), 
-			"You mistakenly claim two points representing San Juan PR and Seattle WA's nearest points, respectively, are connected. This test is designed if .connected() is correct, even if .nearestPoint() is faulty"); 
+			"Your algorithm mistakenly claims two points representing A and J's nearest points, respectively, are connected. This test tests if .connected() is correct, even if .nearestPoint() is faulty"); 
+		// B to I
+			assertFalse(simpleDriver.connected(new Point(2, 0), new Point(-1, 0)), 
+			"Your algorithm mistakenly claims two points representing B and I's nearest points, respectively, are connected. This test tests if .connected() is correct, even if .nearestPoint() is faulty"); 
 		// G to H
 		assertTrue(simpleDriver.connected(new Point(0, 0), new Point(-1, -1)),
-		   "You mistakenly claim two points representing Durham NC and Raleigh NC's nearest points, respectively, are not connected. This test is designed if .connected() is correct, even if .nearestPoint() is faulty"); 
+		    "Your algorithm mistakenly claims two points representing G and H's nearest points, respectively, are not connected. This test tests if .connected() is correct, even if .nearestPoint() is faulty"); 
 	}
  
     // helper method to check if a point's distance to input is within 3% of the true nearest point's distance to input
@@ -159,20 +145,15 @@ public class TestSimpleGraphProcessor {
 		return false;
 	}
 
-    // reads cities from a file
-	private static Map<String, Point> readCities(String fileName) throws FileNotFoundException {
-		Scanner reader = new Scanner(new File(fileName));
-		Map<String, Point> cityLookup = new HashMap<>(); 
-		while (reader.hasNextLine()) {
-			try {
-				String[] info = reader.nextLine().split(",");
-				cityLookup.put(info[0] + " " + info[1], 
-				new Point(Double.parseDouble(info[2]),
-				Double.parseDouble(info[3])));
-			} catch(Exception e) {
-				continue;    
-			}
-		}
-		return cityLookup;
-	}
+    // reads cities from a CSV file into a lookup map
+    private static Map<String, Point> readCities(String fileName) throws FileNotFoundException {
+        Map<String, Point> cityLookup = new HashMap<>();
+        try (Scanner reader = new Scanner(new File(fileName))) {
+            while (reader.hasNextLine()) {
+                String[] info = reader.nextLine().split(",");
+                cityLookup.put(info[0] + " " + info[1], new Point(Double.parseDouble(info[2]), Double.parseDouble(info[3])));
+            }
+        }
+        return cityLookup;
+    }
 }

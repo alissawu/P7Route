@@ -21,44 +21,12 @@ public class TestUSGraphProcessor {
 	String usGraphFile = "data/usa.graph";
 	String usCities = "data/uscities.csv";
 
-	// Setup to initialize driver before tests
 	@BeforeEach
-    public void setup() throws Exception {
-		try {
-			usDriver.initialize(new FileInputStream(usGraphFile));
-			usCityLookup = readCities(usCities);
-		} catch(FileNotFoundException filenotFound) {
-			assertTrue(false, "File not found; please follow the project description for instructions on either" +
-						"a) changing your settings.json or b) replacing usGraphFile and usCities with their absolute paths!");
-		}
-
+    public void setup() throws FileNotFoundException {
+        usDriver.initialize(new FileInputStream(new File(usGraphFile)));
+        usCityLookup = readCities(usCities);
     }
 
-	/**
-	 * Test getVertices first 10 and last 10 enough NOT USED fall 2023
-	 */
-	//@Test 
-	public void testGetVertices(){
-		List<Point> list = usDriver.getVertices();
-		Collections.sort(list);
-		assertTrue(list.size() == 85637,"usa size vertex count wrong "+list.size());
-		List<Point> local = Arrays.asList(new Point(17.974324, -66.676111), new Point(17.977825, -66.698454), 
-		new Point(17.977889, -66.666626), new Point(17.985308, -66.70924), new Point(17.98604, -66.654568), new Point(17.986529, -66.289787), 
-		new Point(17.986652, -66.609292), new Point(17.986815, -66.592512), new Point(17.990779, -66.643844), 
-		new Point(17.991673, -66.639633));
-		for(int k=0; k < local.size(); k++) {
-			assertEquals(list.get(k),local.get(k), "k-th sorted vertex off at "+k);
-		}
-		local = Arrays.asList(new Point(64.820661, -147.808943), new Point(64.820974, -147.778585), new Point(64.821037, -147.705313),
-		new Point(64.824513, -147.817), new Point(64.83647, -147.834531), new Point(64.844346, -148.007368),
-		new Point(64.84715, -147.948418), new Point(64.848395, -147.864132),
-		new Point(64.857053, -147.919664), new Point(64.860041, -147.883283));
-		int index = list.size()-10;
-		for(int k=0; k < local.size(); k++) {
-			assertEquals(list.get(index),local.get(k), "last k-th sorted vertex off at "+index);
-			index +=1;
-		}
-	}
 
 	/**
      * Tests that driver returns closest point in graph to a given query point
@@ -70,10 +38,10 @@ public class TestUSGraphProcessor {
 
 		// includes all possible nearest points within 3% of the closest distance
 
-		List<Point[]> pLookedUpRanges = new ArrayList<>();
+		List<Point[]> pLookedUpRanges = new ArrayList();
 		pLookedUpRanges.add(new Point[] {new Point(35.989709, -78.902124)});
 		pLookedUpRanges.add(new Point[] {new Point(47.625719, -122.328043)});
-		List<Point[]> qLookedUpRanges = new ArrayList<>();
+		List<Point[]> qLookedUpRanges = new ArrayList();
 		qLookedUpRanges.add(new Point[] {new Point(30.047564, -94.33527)});
 		qLookedUpRanges.add(new Point[] {new Point(47.679175, -122.184502), new Point(47.669571, -122.186937)}); 
 		
@@ -95,7 +63,7 @@ public class TestUSGraphProcessor {
      * Accepts alternate paths that are ultimately within 3% of the distance of the true shortest path
      * @throws InvalidAlgorithmParameterException
      */
-	@Test public void testRoute() throws IllegalArgumentException {
+	@Test public void testRoute() throws InvalidAlgorithmParameterException {
 		// Bellevue WA to Clyde Hill WA
 		List<Point> shortRoute = usDriver.route(new Point(47.578813, -122.139773), new Point(47.632292, -122.187898));
 		double shortDist = usDriver.routeDistance(shortRoute);
@@ -115,7 +83,7 @@ public class TestUSGraphProcessor {
 		checkLongPath(longRoute, longDist);
 
 		// San Juan PR to Seattle WA (not connected)
-		assertThrows(IllegalArgumentException.class, ()->usDriver.route(new Point(18.399426, -66.071025), new Point(47.625719, -122.328043)));
+		assertThrows(InvalidAlgorithmParameterException.class, ()->usDriver.route(new Point(18.399426, -66.071025), new Point(47.625719, -122.328043)));
 	}
 
 	/**
@@ -138,15 +106,16 @@ public class TestUSGraphProcessor {
 
 	/**
      * Tests that driver returns true if two inputs are connected in the graph
+	 * Tests only if .routeDistsance() is correct (i.e. can pass even if .route() is incorect)
      */
 	@Test
 	public void testConnected() {
 		// San Juan PR to Seattle WA
 		assertFalse(usDriver.connected(new Point(18.399426, -66.071025), new Point(47.625719, -122.328043)), 
-			"You mistakenly claim two points representing San Juan PR and Seattle WA's nearest points, respectively, are connected. This test is designed if .connected() is correct, even if .nearestPoint() is faulty"); 
+			"Your algorithm mistakenly claims two points representing San Juan PR and Seattle WA's nearest points, respectively, are connected. This tests if .connected() is correct, even if .nearestPoint() is faulty"); 
 		// Durham NC to Raleigh NC
 		assertTrue(usDriver.connected(new Point(35.989709, -78.902124), new Point(35.834585, -78.638592)),
-		   "You mistakenly claim two points representing Durham NC and Raleigh NC's nearest points, respectively, are not connected. This test is designed if .connected() is correct, even if .nearestPoint() is faulty"); 
+		    "Your algorithm mistakenly claims two points representing Durham NC and Raleigh NC's nearest points, respectively, are not connected. This tests if .connected() is correct, even if .nearestPoint() is faulty"); 
 	}
  
 	// helper method to check if a point's distance to input is within 3% of the true nearest point's distance to input
@@ -557,18 +526,13 @@ public class TestUSGraphProcessor {
 
 	// reads cities from a file
 	private static Map<String, Point> readCities(String fileName) throws FileNotFoundException {
-		Scanner reader = new Scanner(new File(fileName));
-		Map<String, Point> cityLookup = new HashMap<>(); 
-		while (reader.hasNextLine()) {
-			try {
-				String[] info = reader.nextLine().split(",");
-				cityLookup.put(info[0] + " " + info[1], 
-				new Point(Double.parseDouble(info[2]),
-				Double.parseDouble(info[3])));
-			} catch(Exception e) {
-				continue;    
-			}
-		}
-		return cityLookup;
-	}
+        Map<String, Point> cityLookup = new HashMap<>();
+        try (Scanner reader = new Scanner(new File(fileName))) {
+            while (reader.hasNextLine()) {
+                String[] info = reader.nextLine().split(",");
+                cityLookup.put(info[0] + " " + info[1], new Point(Double.parseDouble(info[2]), Double.parseDouble(info[3])));
+            }
+        }
+        return cityLookup;
+    }
 }

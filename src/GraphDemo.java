@@ -1,112 +1,77 @@
-/**
- * Demonstrates the calculation of shortest paths in the US Highway
- * network, showing the functionality of GraphProcessor and using
- * Visualize
- * @author Owen Astrachan (preliminary)
- * TO DO: Add your name(s) as authors
- */
-import java.util.*;
 import java.io.*;
+import java.util.*;
 
 public class GraphDemo {
-    
-    /**
-     * Keys in the map are locations like "Durham NC" or "Portland OR" or "Portland ME",
-     * the corresponding value is the Point for that location label
-     */
-    private Map<String, Point> myMap;
+    private Map<String, Point> cityMap;
 
-    public GraphDemo(){
-        myMap = new HashMap<>();
+    public GraphDemo() {
+        cityMap = new HashMap<>();
     }
 
-    /**
-     * This works for "uscities.csv" as the filename, or other
-     * files formatted similarly
-     * @param filename is the name of a properly formatted file
-     * @throws IOException
-     */
-    public void readData(String filename) throws IOException{
-        Scanner s = new Scanner(new File(filename));
-        while (s.hasNextLine()) {
-            String line = s.nextLine();
-            String[] data = line.split(",");
-            String name = data[0] + " " + data[1];
-            myMap.put(name, new Point(Double.parseDouble(data[2]),Double.parseDouble(data[3])));
+    public void readData(String filename) throws IOException {
+        try (Scanner scanner = new Scanner(new File(filename))) {
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                String[] data = line.split(",");
+                String name = data[0] + " " + data[1];
+                cityMap.put(name, new Point(Double.parseDouble(data[2]), Double.parseDouble(data[3])));
+            }
         }
     }
 
-    public void segmented(GraphProcessor gp, Visualize viz){
-        String start = "Miami FL";
-        String inter = "San Diego CA";
-        String end = "Seattle WA";
-        // no code here
-    }
+    public void userInteract(GraphProcessor graphProcessor, Visualize visualizer) {
+        String start = "Miami FL"; // Default start location
+        String end = "Seattle WA"; // Default end location
 
-    /**
-     * Modify this code to allow the user to choose cities rather than
-     * having the cities hard-wired by uncommenting code 
-     * @param gp
-     * @param viz
-     */
-    public void userInteract(GraphProcessor gp,Visualize viz) {
-        
-        String start = "Miami FL";
-        String end = "Seattle WA";
-
-        /** remove comment for user-interaction
-         
+        // Uncomment below for user interaction via terminal
+        /*
         Scanner in = new Scanner(System.in);
-        System.out.print("enter source location: ");
+        System.out.print("Enter source location: ");
         start = in.nextLine();
-        System.out.print("enter end location: ");
+        System.out.print("Enter destination location: ");
         end = in.nextLine();
         in.close();
+        */
 
-        **/
-
-        if (! myMap.containsKey(start)){
-            System.out.printf("couldn't find %s in graph\n",start);
+        if (!cityMap.containsKey(start) || !cityMap.containsKey(end)) {
+            System.out.printf("One or both of the specified cities cannot be found in the graph.\n");
             return;
         }
-        if (! myMap.containsKey(end)){
-            System.out.printf("couldn't find %s in graph\n",end);
+
+        Point nearStart = graphProcessor.nearestPoint(cityMap.get(start));
+        Point nearEnd = graphProcessor.nearestPoint(cityMap.get(end));
+
+        try {
+            List<Point> path = graphProcessor.route(nearStart, nearEnd);
+            double dist = graphProcessor.routeDistance(path);
+            System.out.printf("Short path has %d points and is %2.3f miles in length.\n", path.size(), dist);
+            visualizer.drawRoute(path);
+        } catch (Exception e) {
+            System.out.println("An error occurred while finding the route: " + e.getMessage());
         }
-        Point nearStart = gp.nearestPoint(myMap.get(start));
-        Point nearEnd = gp.nearestPoint(myMap.get(end));
-        System.out.printf("found %s and %s\n",nearStart,nearEnd);
-        List<Point> path = gp.route(nearStart, nearEnd);
-        double dist = gp.routeDistance(path);
-        System.out.printf("start: %s, end: %s\n",
-                          nearStart,nearEnd);
-        System.out.printf("short path has %d points\n",path.size());
-        System.out.printf("short path is %2.3f in length\n",dist);
-        viz.drawRoute(path);
     }
-   
-    public static void main(String[] args) throws IOException {
+
+    public static void main(String[] args) {
         String usaCityFile = "data/uscities.csv";
 
-        String[] durhamData = {"images/durham.png", 
-                               "data/durham.vis",
-                               "data/durham.graph"};
-        String[] usaData = {"images/usa.png",
-                            "data/usa.vis",
-                            "data/usa.graph"};
+        String[] durhamData = {"images/durham.png", "data/durham.vis", "data/durham.graph"};
+        String[] usaData = {"images/usa.png", "data/usa.vis", "data/usa.graph"};
+        String[] simpleData = {"images/simple.png", "data/simple.vis", "data/simple.graph"};
 
-        String[] simpleData = {"images/simple.png",
-                               "data/simple.vis",
-                               "data/simple.graph"};
-
-        // useThisData can point to durham, simple, or usa, modify to test
+        // Modify this line to use different datasets for testing
         String[] useThisData = usaData;
-        
-        GraphDemo gd = new GraphDemo();
-        gd.readData(usaCityFile);
 
-        GraphProcessor gp = new GraphProcessor();
-        gp.initialize(new FileInputStream(useThisData[2]));
-        Visualize viz = new Visualize(useThisData[1],useThisData[0]);
-        gd.userInteract(gp,viz);
+        try {
+            GraphDemo demo = new GraphDemo();
+            demo.readData(usaCityFile);
+
+            GraphProcessor graphProcessor = new GraphProcessor();
+            graphProcessor.initialize(new FileInputStream(useThisData[2]));
+            Visualize visualizer = new Visualize(useThisData[1], useThisData[0]);
+            demo.userInteract(graphProcessor, visualizer);
+        } catch (IOException e) {
+            System.err.println("An error occurred while initializing the graph data: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

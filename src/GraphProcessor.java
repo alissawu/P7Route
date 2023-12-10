@@ -1,8 +1,8 @@
 import java.security.InvalidAlgorithmParameterException;
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.*;
-
-
 /**
  * Models a weighted graph of latitude-longitude points
  * and supports various distance and routing operations.
@@ -11,39 +11,47 @@ import java.util.*;
  * @author Owen Astrachan modified in Fall 2023
  *
  */
+
 public class GraphProcessor {
-    /**
-     * Creates and initializes a graph from a source data
-     * file in the .graph format. Should be called
-     * before any other methods work.
-     * @param file a FileInputStream of the .graph file
-     * @throws Exception if file not found or error reading
-     */
+    private Map<Point, Integer> componentMap;
+    private Map<Point, List<Point>> adjacencyMap;
+    private List<Point> vertexList;
+    private int vertexCount;
+    private int edgeCount;
 
-    // include instance variables here
+    public void initialize(FileInputStream file) throws FileNotFoundException {
+        Scanner scanner = new Scanner(file);
+        if (!scanner.hasNextInt()) {
+            scanner.close();
+            throw new FileNotFoundException("Couldn't read .graph");
+        }
 
-    public GraphProcessor(){
-        // TODO initialize instance variables
+        vertexCount = scanner.nextInt();
+        edgeCount = scanner.nextInt();
+        scanner.nextLine(); // Move to the next line
 
+        vertexList = new ArrayList<>();
+        for (int i = 0; i < vertexCount; i++) {
+            String[] line = scanner.nextLine().split(" ");
+            vertexList.add(new Point(Double.parseDouble(line[1]), Double.parseDouble(line[2])));
+        }
+
+        adjacencyMap = new HashMap<>();
+        for (int i = 0; i < edgeCount; i++) {
+            String[] edgeInfo = scanner.nextLine().split(" ");
+            Point source = vertexList.get(Integer.parseInt(edgeInfo[0]));
+            Point destination = vertexList.get(Integer.parseInt(edgeInfo[1]));
+            adjacencyMap.computeIfAbsent(source, k -> new ArrayList<>()).add(destination);
+            adjacencyMap.computeIfAbsent(destination, k -> new ArrayList<>()).add(source);
+        }
+
+        buildComponents();
+        scanner.close();
     }
-
-    /**
-     * Creates and initializes a graph from a source data
-     * file in the .graph format. Should be called
-     * before any other methods work.
-     * @param file a FileInputStream of the .graph file
-     * @throws IOException if file not found or error reading
-     */
-
-    public void initialize(FileInputStream file) throws IOException {
-        // TODO implement by reading info and creating graph
-    }
-
     /**
      * NOT USED IN FALL 2023, no need to implement
      * @return list of all vertices in graph
      */
-
     public List<Point> getVertices(){
         return null;
     }
@@ -56,63 +64,116 @@ public class GraphProcessor {
         return null;
     }
 
-    /**
-     * Searches for the point in the graph that is closest in
-     * straight-line distance to the parameter point p
-     * @param p is a point, not necessarily in the graph
-     * @return The closest point in the graph to p
-     */
-    public Point nearestPoint(Point p) {
-        // TODO implement nearestPoint
 
-        return null;
+    private void buildComponents() {
+        componentMap = new HashMap<>();
+        Set<Point> seen = new HashSet<>();
+        int componentId = 0;
+
+        for (Point vertex : vertexList) {
+            if (!seen.contains(vertex)) {
+                exploreComponent(vertex, componentId++, seen);
+            }
+        }
     }
 
+    private void exploreComponent(Point start, int componentId, Set<Point> seen) {
+        Stack<Point> stack = new Stack<>();
+        stack.push(start);
+        seen.add(start);
+        componentMap.put(start, componentId);
 
-    /**
-     * Calculates the total distance along the route, summing
-     * the distance between the first and the second Points, 
-     * the second and the third, ..., the second to last and
-     * the last. Distance returned in miles.
-     * @param start Beginning point. May or may not be in the graph.
-     * @param end Destination point May or may not be in the graph.
-     * @return The distance to get from start to end
-     */
+        while (!stack.isEmpty()) {
+            Point current = stack.pop();
+            for (Point neighbor : adjacencyMap.get(current)) {
+                if (seen.add(neighbor)) { // If newly seen
+                    componentMap.put(neighbor, componentId);
+                    stack.push(neighbor);
+                }
+            }
+        }
+    }
+
+    public Point nearestPoint(Point p) {
+        Point nearest = null;
+        double minDistance = Double.MAX_VALUE;
+
+        for (Point vertex : vertexList) {
+            double distance = p.distance(vertex);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = vertex;
+            }
+        }
+
+        return nearest;
+    }
+
     public double routeDistance(List<Point> route) {
         double d = 0.0;
-        // TODO implement routeDistance
+        for (int i = 0; i < route.size() - 1; i++) {
+            d += route.get(i).distance(route.get(i + 1));
+        }
         return d;
     }
-    
 
-    /**
-     * Checks if input points are part of a connected component
-     * in the graph, that is, can one get from one to the other
-     * only traversing edges in the graph
-     * @param p1 one point
-     * @param p2 another point
-     * @return true if and onlyu if p2 is reachable from p1 (and vice versa)
-     */
     public boolean connected(Point p1, Point p2) {
-        // TODO implement connected
-        return false;
+        return componentMap.getOrDefault(p1, -1).equals(componentMap.getOrDefault(p2, -2));
     }
 
-    /**
-     * Returns the shortest path, traversing the graph, that begins at start
-     * and terminates at end, including start and end as the first and last
-     * points in the returned list. If there is no such route, either because
-     * start is not connected to end or because start equals end, throws an
-     * exception.
-     * @param start Beginning point.
-     * @param end Destination point.
-     * @return The shortest path [start, ..., end].
-     * @throws IllegalArgumentException if there is no such route, 
-     * either because start is not connected to end or because start equals end.
-     */
-    public List<Point> route(Point start, Point end) throws IllegalArgumentException {
-        // TODO implement route
-        return null;
+    public List<Point> route(Point start, Point end) throws InvalidAlgorithmParameterException {
+        if (!adjacencyMap.containsKey(start) || !adjacencyMap.containsKey(end) || start.equals(end)) {
+            throw new InvalidAlgorithmParameterException("Invalid start or end point, or points are the same.");
+        }
+    
+        Map<Point, Double> distTo = new HashMap<>();
+        Map<Point, Point> pathTo = new HashMap<>();
+        PriorityQueue<Point> queue = new PriorityQueue<>(Comparator.comparingDouble(distTo::get));
+        Set<Point> visited = new HashSet<>();
+    
+        for (Point p : adjacencyMap.keySet()) {
+            distTo.put(p, Double.MAX_VALUE);
+        }
+        distTo.put(start, 0.0);
+        queue.add(start);
+    
+        while (!queue.isEmpty()) {
+            Point current = queue.poll();
+            visited.add(current);
+            if (current.equals(end)) break;
+    
+            for (Point neighbor : adjacencyMap.get(current)) {
+                if (visited.contains(neighbor)) continue;
+                double newDist = distTo.get(current) + current.distance(neighbor);
+                if (newDist < distTo.get(neighbor)) {
+                    distTo.put(neighbor, newDist);
+                    pathTo.put(neighbor, current);
+                    queue.remove(neighbor); // Update the priority queue
+                    queue.add(neighbor);
+                }
+            }
+        }
+    
+        if (!pathTo.containsKey(end)) {
+            throw new InvalidAlgorithmParameterException("No path exists between the start and end points.");
+        }
+    
+        return buildPath(start, end, pathTo);
+    }
+    
+    private List<Point> buildPath(Point start, Point end, Map<Point, Point> pathTo) throws InvalidAlgorithmParameterException {
+        LinkedList<Point> path = new LinkedList<>();
+        Point current = end;
+        while (current != null && !current.equals(start)) {
+            path.addFirst(current);
+            current = pathTo.get(current);
+        }
+        if (current == null || !current.equals(start)) {
+            throw new InvalidAlgorithmParameterException("No path exists.");
+        }
+        path.addFirst(start); // Add start point to the beginning of the path
+    
+        return path;
     }
     public static void main(String[] args) throws FileNotFoundException, IOException {
         String name = "data/usa.graph";
@@ -121,6 +182,4 @@ public class GraphProcessor {
         System.out.println("running GraphProcessor");
     }
 
-
-    
 }

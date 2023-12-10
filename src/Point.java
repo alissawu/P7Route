@@ -1,3 +1,5 @@
+import java.util.Objects;
+
 /**
  * Represents an immutable latitude-longitude coordinate point.
  * Uses degrees from -180.0 to 180.0.
@@ -38,20 +40,16 @@ public class Point implements Comparable<Point> {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof Point)) { 
-            return false; 
-        }
-        Point p = (Point) o;
-        if ((lat == p.lat) && (lon == p.lon)) {
-            return true;
-        }
-        return false;
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Point point = (Point) obj;
+        return Double.compare(point.lat, lat) == 0 && Double.compare(point.lon, lon) == 0;
     }
 
     @Override
     public int hashCode() {
-        return Double.hashCode(lat+lon);
+        return Objects.hash(lat, lon);
     }
 
     @Override
