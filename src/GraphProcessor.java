@@ -128,7 +128,7 @@ public class GraphProcessor {
         if (!adjacencyMap.containsKey(start) || !adjacencyMap.containsKey(end)) {
             throw new InvalidAlgorithmParameterException("Invalid start or end point.");
         }
-        if (!componentMap.get(start).equals(componentMap.get(end))) {
+        if (!connected(start, end)) {
             throw new InvalidAlgorithmParameterException("No path exists between the start and end points.");
         }
     
