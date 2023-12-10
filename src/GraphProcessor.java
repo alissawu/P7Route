@@ -118,7 +118,12 @@ public class GraphProcessor {
     }
 
     public boolean connected(Point p1, Point p2) {
-        return componentMap.getOrDefault(p1, -1).equals(componentMap.getOrDefault(p2, -2));
+        if (componentMap.containsKey(p1) && componentMap.containsKey(p2)){
+            if (componentMap.get(p1) == componentMap.get(p2)){
+                return true;
+            }
+        }
+        return false;
     }
 
     public List<Point> route(Point start, Point end) throws InvalidAlgorithmParameterException {
